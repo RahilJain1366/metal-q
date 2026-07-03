@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "metalq"
+version = "0.1.0"
+description = "High-performance quantum circuit simulator on Apple Metal, with Rust GPU backend"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26",
+    "sympy>=1.12",
+]
+
+[project.optional-dependencies]
+torch = ["torch>=2.2"]
+qiskit = ["qiskit>=1.0"]
+dev = ["pytest", "pytest-benchmark", "black", "ruff", "mypy"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["metalq*"]

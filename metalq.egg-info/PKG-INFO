@@ -1,0 +1,17 @@
+Metadata-Version: 2.4
+Name: metalq
+Version: 0.1.0
+Summary: High-performance quantum circuit simulator on Apple Metal, with Rust GPU backend
+Requires-Python: >=3.10
+Requires-Dist: numpy>=1.26
+Requires-Dist: sympy>=1.12
+Provides-Extra: torch
+Requires-Dist: torch>=2.2; extra == "torch"
+Provides-Extra: qiskit
+Requires-Dist: qiskit>=1.0; extra == "qiskit"
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-benchmark; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Requires-Dist: ruff; extra == "dev"
+Requires-Dist: mypy; extra == "dev"

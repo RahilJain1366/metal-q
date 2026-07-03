@@ -1,0 +1,15 @@
+numpy>=1.26
+sympy>=1.12
+
+[dev]
+pytest
+pytest-benchmark
+black
+ruff
+mypy
+
+[qiskit]
+qiskit>=1.0
+
+[torch]
+torch>=2.2
