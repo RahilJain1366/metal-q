@@ -2,7 +2,6 @@
 
 A high-performance quantum circuit simulator that runs entirely on Apple GPUs via **Apple Metal**, with a **Rust** native backend and a clean **Python** API.
 
-https://github.com/masa-whitestone/metal-quantum/tree/main - main source code, added Rust layer in this repo
 ---
 
 ## Overview
@@ -371,6 +370,8 @@ This simulator requires a Mac with a Metal-capable GPU (all Apple Silicon and mo
 Usually a mismatch between the `ctypes` function signatures in `_ffi.py` and the actual `extern "C"` signatures in `lib.rs`. Check that argument types and order match exactly.
 
 ---
+## Acknowledgments
+This project is inspired by [Metal-Q](https://github.com/masa-whitestone/metal-quantum), a high-performance quantum simulator for Apple Silicon. We have extended the original project by implementing a native Rust performance layer.
 
 ## License
 
