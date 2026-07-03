@@ -2,6 +2,7 @@
 
 A high-performance quantum circuit simulator that runs entirely on Apple GPUs via **Apple Metal**, with a **Rust** native backend and a clean **Python** API.
 
+https://github.com/masa-whitestone/metal-quantum/tree/main - main source code, added Rust layer in this repo
 ---
 
 ## Overview
