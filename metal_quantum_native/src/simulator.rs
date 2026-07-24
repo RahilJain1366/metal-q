@@ -1,34 +1,37 @@
 use num_complex::Complex;
 use crate::metal_backend::MetalBackend;
+use crate::GateParam;
 
-pub struct Simulator{
+pub struct Simulator {
     pub n_qubits: usize,
-    pub state: Vec<Complex<f32>>,
     backend: MetalBackend,
 }
 
-impl Simulator{
+impl Simulator {
     pub fn new(n_qubits: usize) -> Self {
-        let dim = 1 << n_qubits;
-        let mut state = vec![Complex::new(0.0,0.0); dim];
-        state[0] = Complex::new(1.0,0.0);
-        Self {
-            n_qubits, 
-            state, 
-            backend: MetalBackend::new(),
-        }
+        Self { n_qubits, backend: MetalBackend::new(n_qubits) }
     }
 
-    pub fn reset(&mut self){
-        self.state.fill(Complex::new(0.0,0.0));
-        self.state[0] = Complex::new(1.0,0.0);
+    pub fn reset(&mut self) {
+        self.backend.reset();
     }
 
-    pub fn apply_gate(&mut self, gate_id: u32, target: usize, control: i32, thetha: f32, phi: f32, lam: f32){
-        self.backend.apply_gate(&mut self.state, self.n_qubits, gate_id, target, control, thetha, phi, lam);
+    pub fn apply_gate(
+        &mut self, gate_id: u32, target: usize, control: i32,
+        theta: f32, phi: f32, lam: f32,
+    ) {
+        self.backend.apply_gate(gate_id, target, control, theta, phi, lam);
     }
 
-    pub fn statevector(&self) -> &[Complex<f32>]{
-        &self.state
+    pub fn apply_gates(&mut self, gates: &[GateParam]) {
+        self.backend.apply_gates(gates);
+    }
+
+    pub fn statevector(&self) -> &[Complex<f32>] {
+        self.backend.statevector()
+    }
+
+    pub fn set_state(&mut self, data: *const f32, len: u32) {
+        self.backend.set_state(data, len);
     }
 }

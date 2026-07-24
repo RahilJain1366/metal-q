@@ -1,6 +1,40 @@
 # MetalQ
 
-A high-performance quantum circuit simulator that runs entirely on Apple GPUs via **Apple Metal**, with a **Rust** native backend and a clean **Python** API.
+A quantum circuit simulator that runs entirely on Apple GPUs via **Apple Metal**, with a **Rust** native backend and a clean **Python** API.
+
+```
+Python API  ──►  ctypes FFI  ──►  Rust dylib  ──►  Metal GPU kernels
+                              (libmetalq_native.dylib)   (MetalKernels.metallib)
+```
+
+---
+
+## Performance
+
+Benchmarked on Apple M1 Pro. Each number is the median of 5 runs.
+Circuit: 4 alternating layers of random single-qubit rotations followed by a CNOT ladder.
+
+**Random rotation + CNOT circuit (statevector simulation)**
+
+| Qubits | MetalQ   | Qiskit Aer | PennyLane | Aer / MetalQ |
+|-------:|:--------:|:----------:|:---------:|:------------:|
+| 4      | 1.3 ms   | 30.8 ms    | 4.1 ms    | 24×          |
+| 8      | 2.5 ms   | 31.5 ms    | 8.5 ms    | 13×          |
+| 12     | 3.3 ms   | 34.3 ms    | 17.4 ms   | 10×          |
+| 16     | 12.8 ms  | 57.3 ms    | 51.2 ms   | 4.5×         |
+| 20     | 41.3 ms  | 311.7 ms   | 1.22 s    | 7.5×         |
+
+**QFT circuit (statevector simulation)**
+
+| Qubits | MetalQ   | Qiskit Aer | PennyLane | Aer / MetalQ |
+|-------:|:--------:|:----------:|:---------:|:------------:|
+| 4      | 4.5 ms   | 28.5 ms    | 0.3 ms    | 6×           |
+| 8      | 1.6 ms   | 30.3 ms    | 3.4 ms    | 19×          |
+| 12     | 3.0 ms   | 33.7 ms    | 12.3 ms   | 11×          |
+| 16     | 12.5 ms  | 47.3 ms    | 50.0 ms   | 3.8×         |
+| 20     | 38.5 ms  | 167.6 ms   | 846 ms    | 4.3×         |
+
+**Note on small circuits:** at 4 qubits the Metal kernel dispatch adds ~1–4 ms of fixed overhead, which dominates when the state vector is only 16 amplitudes. MetalQ's advantage grows with qubit count as the O(2^n) work amortises that overhead. Run `python benchmarks/bench.py` to reproduce on your machine.
 
 ---
 
@@ -8,10 +42,7 @@ A high-performance quantum circuit simulator that runs entirely on Apple GPUs vi
 
 MetalQ dispatches every gate operation as a GPU compute kernel on the Metal device, keeping the statevector in GPU-shared memory throughout a circuit execution. Gradient computation uses the adjoint differentiation method, and PyTorch integration exposes the simulator as a standard `nn.Module` for hybrid quantum-classical learning.
 
-```
-Python API  ──►  ctypes FFI  ──►  Rust dylib  ──►  Metal GPU kernels
-                              (libmetalq_native.dylib)   (MetalKernels.metallib)
-```
+See [`docs/adjoint_method.md`](docs/adjoint_method.md) for a technical explanation of why adjoint differentiation was chosen over parameter-shift and how it is implemented here.
 
 ---
 
@@ -54,7 +85,7 @@ pip install -e ".[torch,qiskit]" # add Qiskit adapter
 ### 3. Verify the installation
 
 ```bash
-python verfiy.py
+python verify.py
 ```
 
 Expected output:
@@ -193,8 +224,11 @@ All gate methods return `self` for chaining: `qc.h(0).cx(0, 1).rz(np.pi/4, 1)`.
 metal-q/
 ├── Cargo.toml                    # Rust workspace root
 ├── pyproject.toml                # Python package config
-├── MetalKernels.metallib         # Compiled Metal library (build artifact)
-├── verfiy.py                     # End-to-end smoke test suite
+├── LICENSE                       # MIT
+├── verify.py                     # End-to-end smoke test suite
+│
+├── benchmarks/
+│   └── bench.py                  # MetalQ vs Qiskit Aer vs PennyLane
 │
 ├── metal_quantum_native/         # Rust crate → libmetalq_native.dylib
 │   ├── Cargo.toml
@@ -204,7 +238,7 @@ metal-q/
 │       ├── simulator.rs          # Statevector allocator & gate dispatcher
 │       ├── gates.rs              # Gate ID constants & kernel name mapping
 │       ├── metal_backend.rs      # Apple Metal GPU dispatch (metal-rs)
-│       ├── gradient.rs           # Adjoint differentiation (CPU fallback)
+│       ├── gradient.rs           # Adjoint differentiation
 │       ├── sampler.rs            # Shot-based measurement (xorshift64 RNG)
 │       └── hamiltonian.rs        # PauliSum expectation value ⟨ψ|H|ψ⟩
 │
@@ -213,17 +247,26 @@ metal-q/
 │   ├── two_qubit.metal           # Two-qubit kernels (CNOT, CZ, SWAP)
 │   └── gradient.metal            # Adjoint gradient kernels (RX, RY, RZ)
 │
-└── metalq/                       # Python package
-    ├── __init__.py               # Public API surface
-    ├── circuit.py                # Circuit class
-    ├── gate.py                   # GateOp, Parameter
-    ├── hamiltonian.py            # Hamiltonian, X(), Y(), Z(), I()
-    ├── result.py                 # RunResult, StatevectorResult
-    ├── runner.py                 # run(), statevector(), expect()
-    ├── _ffi.py                   # ctypes bridge to Rust dylib
-    └── torch/
-        ├── layer.py              # QuantumLayer (nn.Module)
-        └── function.py           # QuantumFunction (torch.autograd.Function)
+├── metalq/                       # Python package
+│   ├── __init__.py               # Public API surface
+│   ├── circuit.py                # Circuit class
+│   ├── gate.py                   # GateOp, Parameter
+│   ├── hamiltonian.py            # Hamiltonian, X(), Y(), Z(), I()
+│   ├── result.py                 # RunResult, StatevectorResult
+│   ├── runner.py                 # run(), statevector(), expect()
+│   ├── _ffi.py                   # ctypes bridge to Rust dylib
+│   └── torch/
+│       ├── layer.py              # QuantumLayer (nn.Module)
+│       └── function.py           # QuantumFunction (torch.autograd.Function)
+│
+├── docs/
+│   ├── API.md                    # Full API reference
+│   └── adjoint_method.md         # Technical note: adjoint vs parameter-shift
+│
+└── tests/
+    ├── smoke_test.py
+    ├── test_classical.py
+    └── test_gates.py
 ```
 
 ---
@@ -258,6 +301,8 @@ Gradients are computed using the adjoint method (O(1) memory overhead vs. O(n) f
    - Unapply `G†` from both `|ψ⟩` and `|λ⟩`.
 
 For rotation gates: `dRn(θ)/dθ = -i/2 · Pn · Rn(θ)` where `Pn` is the corresponding Pauli.
+
+See [`docs/adjoint_method.md`](docs/adjoint_method.md) for the full derivation and a comparison against parameter-shift.
 
 ### FFI Bridge
 
@@ -344,13 +389,13 @@ sv.probabilities() # np.ndarray float64, shape (2^n,)
 
 ```bash
 # Quick smoke test
-python verfiy.py
+python verify.py
 
 # Full test suite
 pytest tests/
 
-# With benchmarks
-pytest tests/ --benchmark-enable
+# Benchmark against Qiskit Aer and PennyLane
+python benchmarks/bench.py
 ```
 
 ---
@@ -371,6 +416,12 @@ Usually a mismatch between the `ctypes` function signatures in `_ffi.py` and the
 
 ---
 
+## Acknowledgment
+
+I built the Metal compute kernels (`shaders/`), the Rust backend including the simulator, adjoint differentiation, shot sampler, and Hamiltonian expectation engine (`metal_quantum_native/src/`), the Python FFI bridge, circuit abstraction, and PyTorch integration layer from scratch. The project uses `metal-rs` (Rust bindings for Apple Metal), `num-complex` for complex arithmetic, and standard Python packaging tooling. Gate conventions and the adjoint algorithm follow Nielsen & Chuang (2000) and Jones & Gacon (2020).
+
+---
+
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
